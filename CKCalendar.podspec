@@ -14,7 +14,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 LICENSETEXT
 }
   s.author = { "Jason Kozemczak" => "jason.kozemczak@gmail.com" }
-  s.source = { :git => "https://github.com/geoffspears/CKCalendar.git", :tag => 'v0.1.0' }
+  s.source = { :git => "https://github.com/geoffspears/CKCalendar.git", :tag => '1.0.1' }
   s.platform = :ios, '5.0'
   s.source_files = 'Source'
   s.resources = 'Source/resources/*'
