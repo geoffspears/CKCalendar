@@ -21,10 +21,10 @@
 #import "CKCalendarView.h"
 
 #define BUTTON_MARGIN 4
-#define CALENDAR_MARGIN 5
+#define CALENDAR_MARGIN 0
 #define TOP_HEIGHT 44
 #define DAYS_HEADER_HEIGHT 22
-#define DEFAULT_CELL_WIDTH 43
+#define DEFAULT_CELL_WIDTH 46
 #define CELL_BORDER_WIDTH 1
 
 #define UIColorFromRGB(rgbValue) [UIColor colorWithRed:((float)((rgbValue & 0xFF0000) >> 16))/255.0 green:((float)((rgbValue & 0xFF00) >> 8))/255.0 blue:((float)(rgbValue & 0xFF))/255.0 alpha:1.0]
@@ -71,9 +71,31 @@
 @property (nonatomic, strong) CKDateItem *dateItem;
 @property (nonatomic, strong) NSCalendar *calendar;
 
+@property (nonatomic, strong) UIView *highlightLayer;
+
 @end
 
 @implementation DateButton
+
+-(id)initWithFrame:(CGRect)frame
+{
+    if(self = [super initWithFrame:frame])
+    {
+        self.highlightLayer = [[UIView alloc] init];
+        self.highlightLayer.userInteractionEnabled = NO;
+        [self addSubview:self.highlightLayer];
+    }
+    return self;
+}
+
+-(void)layoutSubviews
+{
+    [super layoutSubviews];
+    int radius = MIN(((int)(self.frame.size.width / 12)) * 6, ((int)(self.frame.size.height / 12)) * 6);
+    self.highlightLayer.frame = CGRectMake((CGRectGetWidth(self.frame) / 2) - radius, (CGRectGetHeight(self.frame) / 2) - radius, radius * 2, radius * 2);
+    self.highlightLayer.layer.cornerRadius = radius;
+    
+}
 
 - (void)setDate:(NSDate *)date {
     _date = date;
@@ -81,7 +103,7 @@
         NSDateComponents *comps = [self.calendar components:NSDayCalendarUnit|NSMonthCalendarUnit fromDate:date];
         [self setTitle:[NSString stringWithFormat:@"%d", comps.day] forState:UIControlStateNormal];
     } else {
-        [self setTitle:@"" forState:UIControlStateNormal];
+        [self setTitle:[NSString string] forState:UIControlStateNormal];
     }
 }
 
@@ -147,14 +169,6 @@
     self.onlyShowCurrentMonth = YES;
     self.adaptHeightToNumberOfWeeksInMonth = YES;
 
-    self.layer.cornerRadius = 6.0f;
-
-    UIView *highlight = [[UIView alloc] initWithFrame:CGRectZero];
-    highlight.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.2];
-    highlight.layer.cornerRadius = 6.0f;
-    [self addSubview:highlight];
-    self.highlight = highlight;
-
     // SET UP THE HEADER
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     titleLabel.textAlignment = NSTextAlignmentCenter;
@@ -162,16 +176,20 @@
     titleLabel.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleWidth;
     [self addSubview:titleLabel];
     self.titleLabel = titleLabel;
-
+    
+    self.previousMonthImage = [[UIImage imageNamed:@"left_arrow.png"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    
     UIButton *prevButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    [prevButton setImage:[UIImage imageNamed:@"left_arrow.png"] forState:UIControlStateNormal];
+    [prevButton setImage:self.previousMonthImage forState:UIControlStateNormal];
     prevButton.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin;
     [prevButton addTarget:self action:@selector(_moveCalendarToPreviousMonth) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:prevButton];
     self.prevButton = prevButton;
 
+    self.nextMonthImage = [[UIImage imageNamed:@"right_arrow.png"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    
     UIButton *nextButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    [nextButton setImage:[UIImage imageNamed:@"right_arrow.png"] forState:UIControlStateNormal];
+    [nextButton setImage:self.nextMonthImage forState:UIControlStateNormal];
     nextButton.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleLeftMargin;
     [nextButton addTarget:self action:@selector(_moveCalendarToNextMonth) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:nextButton];
@@ -182,7 +200,6 @@
     calendarContainer.layer.borderWidth = 1.0f;
     calendarContainer.layer.borderColor = [UIColor blackColor].CGColor;
     calendarContainer.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleWidth;
-    calendarContainer.layer.cornerRadius = 4.0f;
     calendarContainer.clipsToBounds = YES;
     [self addSubview:calendarContainer];
     self.calendarContainer = calendarContainer;
@@ -246,7 +263,7 @@
     [super layoutSubviews];
 
     CGFloat containerWidth = self.bounds.size.width - (CALENDAR_MARGIN * 2);
-    self.cellWidth = (floorf(containerWidth / 7.0)) - CELL_BORDER_WIDTH;
+    self.cellWidth = (floorf(containerWidth / 7.0)) + CELL_BORDER_WIDTH;
 
     NSInteger numberOfWeeksToShow = 6;
     if (self.adaptHeightToNumberOfWeeksInMonth) {
@@ -270,8 +287,9 @@
 
     CGRect lastDayFrame = CGRectZero;
     for (UILabel *dayLabel in self.dayOfWeekLabels) {
-        dayLabel.frame = CGRectMake(CGRectGetMaxX(lastDayFrame) + CELL_BORDER_WIDTH, lastDayFrame.origin.y, self.cellWidth, self.daysHeader.frame.size.height);
-        lastDayFrame = dayLabel.frame;
+        CGRect rect = CGRectMake(CGRectGetMaxX(lastDayFrame), lastDayFrame.origin.y, self.cellWidth, self.daysHeader.frame.size.height);
+        dayLabel.frame = CGRectIntegral(rect);
+        lastDayFrame = rect;
     }
 
     for (DateButton *dateButton in self.dateButtons) {
@@ -301,8 +319,10 @@
         CKDateItem *item = [[CKDateItem alloc] init];
         if ([self _dateIsToday:dateButton.date]) {
             item.textColor = UIColorFromRGB(0xF2F2F2);
-            item.backgroundColor = [UIColor lightGrayColor];
-        } else if (!self.onlyShowCurrentMonth && [self _compareByMonth:date toDate:self.monthShowing] != NSOrderedSame) {
+            dateButton.highlightLayer.backgroundColor = [UIColor lightGrayColor];
+        }
+        else if (!self.onlyShowCurrentMonth && [self _compareByMonth:date toDate:self.monthShowing] != NSOrderedSame)
+        {
             item.textColor = [UIColor lightGrayColor];
         }
 
@@ -310,16 +330,23 @@
             [self.delegate calendar:self configureDateItem:item forDate:date];
         }
 
-        if (self.selectedDate && [self date:self.selectedDate isSameDayAsDate:date]) {
+        if (self.selectedDate && [self date:self.selectedDate isSameDayAsDate:date])
+        {
             [dateButton setTitleColor:item.selectedTextColor forState:UIControlStateNormal];
-            dateButton.backgroundColor = item.selectedBackgroundColor;
-        } else {
-            [dateButton setTitleColor:item.textColor forState:UIControlStateNormal];
-            dateButton.backgroundColor = item.backgroundColor;
+            dateButton.highlightLayer.backgroundColor = item.selectedBackgroundColor;
         }
-
+        else if ([self _dateIsToday:dateButton.date])
+        {
+            item.textColor = UIColorFromRGB(0xF2F2F2);
+            dateButton.highlightLayer.backgroundColor = [UIColor lightGrayColor];
+        }
+        else
+        {
+            [dateButton setTitleColor:item.textColor forState:UIControlStateNormal];
+            dateButton.highlightLayer.backgroundColor = [UIColor clearColor];
+        }
+        dateButton.backgroundColor = item.backgroundColor;
         dateButton.frame = [self _calculateDayCellFrame:date];
-
         [self.calendarContainer addSubview:dateButton];
 
         date = [self _nextDay:date];
@@ -332,7 +359,7 @@
 }
 
 - (void)_updateDayOfWeekLabels {
-    NSArray *weekdays = [self.dateFormatter shortWeekdaySymbols];
+    NSArray *weekdays = [self.dateFormatter veryShortWeekdaySymbols];
     // adjust array depending on which weekday should be first
     NSUInteger firstWeekdayIndex = [self.calendar firstWeekday] - 1;
     if (firstWeekdayIndex > 0) {
@@ -429,13 +456,12 @@
     [self setDateBorderColor:UIColorFromRGB(0xDAE1E6)];
 }
 
-- (CGRect)_calculateDayCellFrame:(NSDate *)date {
+- (CGRect)_calculateDayCellFrame:(NSDate *)date{
     NSInteger numberOfDaysSinceBeginningOfThisMonth = [self _numberOfDaysFromDate:self.monthShowing toDate:date];
     NSInteger row = (numberOfDaysSinceBeginningOfThisMonth + [self _placeInWeekForDate:self.monthShowing]) / 7;
 	
     NSInteger placeInWeek = [self _placeInWeekForDate:date];
-
-    return CGRectMake(placeInWeek * (self.cellWidth + CELL_BORDER_WIDTH), (row * (self.cellWidth + CELL_BORDER_WIDTH)) + CGRectGetMaxY(self.daysHeader.frame) + CELL_BORDER_WIDTH, self.cellWidth, self.cellWidth);
+    return CGRectIntegral(CGRectMake(placeInWeek * self.cellWidth, (row * (self.cellWidth + CELL_BORDER_WIDTH)) + CGRectGetMaxY(self.daysHeader.frame) + CELL_BORDER_WIDTH, self.cellWidth, self.cellWidth));
 }
 
 - (void)_moveCalendarToNextMonth {
@@ -486,6 +512,18 @@
 
 #pragma mark - Theming getters/setters
 
+-(void)setPreviousMonthImage:(UIImage *)image
+{
+    _previousMonthImage = image;
+    [self.prevButton setImage:image forState:UIControlStateNormal];
+}
+
+-(void)setNextMonthImage:(UIImage *)image
+{
+    _nextMonthImage = image;
+    [self.nextButton setImage:image forState:UIControlStateNormal];
+}
+
 - (void)setTitleFont:(UIFont *)font {
     self.titleLabel.font = font;
 }
@@ -500,9 +538,19 @@
     return self.titleLabel.textColor;
 }
 
-- (void)setMonthButtonColor:(UIColor *)color {
-    [self.prevButton setImage:[CKCalendarView _imageNamed:@"left_arrow.png" withColor:color] forState:UIControlStateNormal];
-    [self.nextButton setImage:[CKCalendarView _imageNamed:@"right_arrow.png" withColor:color] forState:UIControlStateNormal];
+- (void)setMonthButtonColor:(UIColor *)color
+{
+    self.prevButton.tintColor = color;
+    self.nextButton.tintColor = color;
+    
+    if(self.previousMonthImage.renderingMode != UIImageRenderingModeAlwaysTemplate)
+    {
+        self.previousMonthImage = [self.previousMonthImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+    if(self.nextMonthImage.renderingMode != UIImageRenderingModeAlwaysTemplate)
+    {
+        self.nextMonthImage = [self.nextMonthImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
 }
 
 - (void)setInnerBorderColor:(UIColor *)color {
@@ -626,30 +674,6 @@
     NSInteger startDay = [self.calendar ordinalityOfUnit:NSDayCalendarUnit inUnit:NSEraCalendarUnit forDate:startDate];
     NSInteger endDay = [self.calendar ordinalityOfUnit:NSDayCalendarUnit inUnit:NSEraCalendarUnit forDate:endDate];
     return endDay - startDay;
-}
-
-+ (UIImage *)_imageNamed:(NSString *)name withColor:(UIColor *)color {
-    UIImage *img = [UIImage imageNamed:name];
-
-    UIGraphicsBeginImageContextWithOptions(img.size, NO, [UIScreen mainScreen].scale);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [color setFill];
-
-    CGContextTranslateCTM(context, 0, img.size.height);
-    CGContextScaleCTM(context, 1.0, -1.0);
-
-    CGContextSetBlendMode(context, kCGBlendModeColorBurn);
-    CGRect rect = CGRectMake(0, 0, img.size.width, img.size.height);
-    CGContextDrawImage(context, rect, img.CGImage);
-
-    CGContextClipToMask(context, rect, img.CGImage);
-    CGContextAddRect(context, rect);
-    CGContextDrawPath(context,kCGPathFill);
-
-    UIImage *coloredImg = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-
-    return coloredImg;
 }
 
 @end

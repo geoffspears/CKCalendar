@@ -47,6 +47,9 @@ typedef enum {
 @property (nonatomic, weak) id<CKCalendarDelegate> delegate;
 
 // Theming
+@property (nonatomic, strong) UIImage *previousMonthImage;
+@property (nonatomic, strong) UIImage *nextMonthImage;
+
 @property (nonatomic, strong) UIFont *titleFont;
 @property (nonatomic, strong) UIColor *titleColor;
 @property (nonatomic, strong) UIFont *dateOfWeekFont;
