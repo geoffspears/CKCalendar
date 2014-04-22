@@ -33,9 +33,6 @@ typedef enum {
 
 @interface CKCalendarView : UIView
 
-- (id)initWithStartDay:(CKCalendarStartDay)firstDay;
-- (id)initWithStartDay:(CKCalendarStartDay)firstDay frame:(CGRect)frame;
-
 @property (nonatomic) CKCalendarStartDay calendarStartDay;
 @property (nonatomic, strong) NSLocale *locale;
 

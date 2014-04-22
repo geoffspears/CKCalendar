@@ -148,24 +148,19 @@
 @dynamic locale;
 
 - (id)init {
-    return [self initWithStartDay:startSunday];
+    return [self initWithFrame:CGRectMake(0, 0, 320, 320)];
 }
 
-- (id)initWithStartDay:(CKCalendarStartDay)firstDay {
-    return [self initWithStartDay:firstDay frame:CGRectMake(0, 0, 320, 320)];
-}
-
-- (void)_init:(CKCalendarStartDay)firstDay {
+- (void)_init {
     self.calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
     [self.calendar setLocale:[NSLocale currentLocale]];
-
     self.cellWidth = DEFAULT_CELL_WIDTH;
 
     self.dateFormatter = [[NSDateFormatter alloc] init];
     [self.dateFormatter setTimeStyle:NSDateFormatterNoStyle];
     self.dateFormatter.dateFormat = @"LLLL yyyy";
 
-    self.calendarStartDay = firstDay;
+    self.calendarStartDay = [self.calendar firstWeekday] != 2 ? startSunday : startMonday;
     self.onlyShowCurrentMonth = YES;
     self.adaptHeightToNumberOfWeeksInMonth = YES;
 
@@ -237,22 +232,18 @@
     [self layoutSubviews]; // TODO: this is a hack to get the first month to show properly
 }
 
-- (id)initWithStartDay:(CKCalendarStartDay)firstDay frame:(CGRect)frame {
+- (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        [self _init:firstDay];
+        [self _init];
     }
     return self;
-}
-
-- (id)initWithFrame:(CGRect)frame {
-    return [self initWithStartDay:startSunday frame:frame];
 }
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
     self = [super initWithCoder:aDecoder];
     if (self) {
-        [self _init:startSunday];
+        [self _init];
     }
     return self;
 }
